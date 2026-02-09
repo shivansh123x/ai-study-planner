@@ -3,68 +3,75 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env file
+# ------------------ LOAD ENV ------------------
 load_dotenv()
 
-# Get Gemini API key
 api_key = os.getenv("GEMINI_API_KEY")
 
-# Configure Gemini
-if api_key:
-    genai.configure(api_key=api_key)
+# ------------------ PAGE CONFIG ------------------
+st.set_page_config(
+    page_title="AI Study Planner",
+    page_icon="📚",
+    layout="centered"
+)
 
-# Streamlit UI
-st.set_page_config(page_title="AI Study Planner", page_icon="📚")
 st.title("📚 AI-Powered Smart Study Planner")
-
 st.write("Generate a personalized daily study timetable using AI.")
 
-# User inputs
+# ------------------ DEBUG (remove later if needed) ------------------
+# Shows whether key is detected
+# st.write("DEBUG: API Key Loaded →", bool(api_key))
+
+# ------------------ CHECK API KEY ------------------
+if not api_key:
+    st.error("❌ Gemini API key not found.\n\n"
+             "Create a `.env` file in the same folder as `app.py` and add:\n\n"
+             "`GEMINI_API_KEY=your_real_key_here`")
+    st.stop()
+
+# Configure Gemini
+genai.configure(api_key=api_key)
+
+# ------------------ USER INPUTS ------------------
 subjects = st.text_input("Enter subjects (comma separated)")
 hours = st.number_input("Hours available per day", min_value=1, max_value=12, value=4)
 exam_date = st.date_input("Exam date")
 
-# Generate plan
+# ------------------ GENERATE PLAN ------------------
 if st.button("Generate Study Plan"):
 
-    # Check API key
-    if not api_key:
-        st.error("❌ Gemini API key not found. Please check your .env file.")
-        st.stop()
-
-    # Check input
-    if not subjects:
+    if not subjects.strip():
         st.warning("⚠️ Please enter at least one subject.")
         st.stop()
 
-    # Create prompt
     prompt = f"""
-    Create a simple, clear, and practical daily study timetable for a student.
+You are an academic planning assistant.
 
-    Subjects: {subjects}
-    Study hours per day: {hours}
-    Exam date: {exam_date}
+Create a **clear, realistic, and practical daily study timetable**.
 
-    Requirements:
-    - Provide a day-wise study schedule
-    - Distribute time evenly across subjects
-    - Keep the plan realistic and easy to follow
-    - Add a short motivational tip at the end
-    """
+Details:
+- Subjects: {subjects}
+- Study hours per day: {hours}
+- Exam date: {exam_date}
+
+Requirements:
+- Provide a **day-wise schedule**
+- Distribute time **evenly and logically**
+- Keep plan **simple and achievable**
+- Add a short **motivational tip** at the end
+"""
 
     try:
-        # Gemini model
         model = genai.GenerativeModel("gemini-1.5-flash")
-
-        # Generate response
         response = model.generate_content(prompt)
+
         plan = response.text
 
-        # Show result
         st.subheader("📝 Your Personalized Study Plan")
         st.write(plan)
 
     except Exception as e:
-        st.error("⚠️ Error generating study plan. Check your API key or internet.")
+        st.error("⚠️ Failed to generate study plan.")
+        st.error("Check your internet connection or Gemini API key.")
         st.exception(e)
 
